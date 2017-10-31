@@ -1,0 +1,61 @@
+execution:
+- scenario: simple
+  concurrency: 5
+  iterations: 20
+  ramp-up: 1m
+  hold-for: 5m
+
+scenarios:
+  simple:
+    timeout: 10s
+    think-time: 500ms
+    variables:
+      collection_exercise_sid: ${__RandomString(3, 0123456789)}
+      csrf_regex : '<input id="csrf_token" name="csrf_token" type="hidden" value="(.+?)">'
+    requests:
+    - url: https://preprod-surveys-launch.eq.ons.digital/
+      method: POST
+      body:
+        user_id: "UNKNOWN"
+        schema: "test_currency.json"
+        exp: "1800"
+        period_str: "May 2016"
+        period_id: "201605"
+        collection_exercise_sid: ${collection_exercise_sid}
+        ru_ref: "12346789012A"
+        ru_name: "Essential Enterprise Ltd."
+        ref_p_start_date: "2016-05-01"
+        ref_p_end_date: "2016-05-03"
+        return_by: "2016-06-12"
+        trad_as: "Essential Enterprise Ltd."
+        employment_date: "2016-06-10"
+        region_code: "GB-ENG"
+        language_code: "en"
+        sexual_identity: "true"
+        roles: "dumper"
+        tx_id: "true"
+        action_launch: "Open Survey"
+      extract-regexp:
+        csrf_token: ${csrf_regex}
+    - url: https://eq.onsdigital.uk/questionnaire/test/currency/${collection_exercise_sid}/group/0/block
+      method: POST
+      body:
+        csrf_token: ${csrf_token}
+        answer: "100"
+        answer-usd: "100"
+        answer-eur: "100"
+        answer-jpy: "100"
+      extract-regexp:
+        csrf_token: ${csrf_regex}
+    - url: https://eq.onsdigital.uk/questionnaire/test/currency/${collection_exercise_sid}/group/0/summary
+      method: POST
+      body:
+        csrf_token: ${csrf_token}
+
+reporting:
+- module: final_stats
+- module: blazemeter
+- module: passfail
+  criteria:
+  - avg-rt>2000ms for 10s, stop as failed
+  - fail>0% for 10s, stop as failed
